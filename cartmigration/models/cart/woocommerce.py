@@ -3154,25 +3154,26 @@ class LeCartWoocommerce(LeCartWordpress):
 					self.insert_map(self.TYPE_ATTR_VALUE, attribute['option_value_id'], term_id,
 									value=attribute['option_value_name'])
 
-					term_taxonomy_data = {
-						'term_id':term_id,
-						'taxonomy':'pa_'+self.sanitize_title(attribute['option_name']),
-						'description':'attr description',
-						'parent':'0',
-						'count':'0'
-					}
-					query = self.create_insert_query_connector('term_taxonomy', term_taxonomy_data)
-					term_taxonomy_id = self.import_data_connector(query, 'query')
-					list_term_taxonomy.append(term_taxonomy_id)
-					term_meta = {
-						'term_id':term_id,
-						'meta_key':'order_pa_' +self.sanitize_title(attribute['option_name']),
-						'meta_value':'0'
-					}
-					query = self.create_insert_query_connector('termmeta', term_meta)
-					self.import_data_connector(query, 'query')
+
 			for attribute in convert['attributes']:
 				desc_id = self.get_map_field_by_src(self.TYPE_ATTR_VALUE,attribute['option_value_id'])
+				term_taxonomy_data = {
+					'term_id': desc_id,
+					'taxonomy': 'pa_' + self.sanitize_title(attribute['option_name']),
+					'description': 'attr description',
+					'parent': '0',
+					'count': '0'
+				}
+				query = self.create_insert_query_connector('term_taxonomy', term_taxonomy_data)
+				term_taxonomy_id = self.import_data_connector(query, 'query')
+				list_term_taxonomy.append(term_taxonomy_id)
+				term_meta = {
+					'term_id': desc_id,
+					'meta_key': 'order_pa_' + self.sanitize_title(attribute['option_name']),
+					'meta_value': '0'
+				}
+				query = self.create_insert_query_connector('termmeta', term_meta)
+				self.import_data_connector(query, 'query')
 				term_relationship = {
 					'object_id':product_id,
 					'term_taxonomy_id':desc_id,
@@ -3181,7 +3182,7 @@ class LeCartWoocommerce(LeCartWordpress):
 				query = self.create_insert_query_connector('term_relationships', term_relationship)
 				self.import_data_connector(query, 'query')
 
-				name = 'pa_'+self.sanitize_title(attribute['option_name'])
+				name = self.sanitize_title(attribute['option_name'])
 				attr_prod_list[name] = {
 					'name':name,
 					'value':attribute['option_value_name'],
@@ -3191,27 +3192,6 @@ class LeCartWoocommerce(LeCartWordpress):
 					'is_taxonomy':'0'
 				}
 				position +=1
-
-			# for term_taxonomy_id in list_term_taxonomy:
-				# term_relationship = {
-				# 	'object_id':product_id,
-				# 	'term_taxonomy_id':term_taxonomy_id,
-				# 	'term_order':'0'
-				# }
-				# query = self.create_insert_query_connector('term_relationships', term_relationship)
-				# self.import_data_connector(query, 'query')
-
-				# name = 'pa_'+self.sanitize_title(attribute['option_name'])
-				# attr_prod_list[name] = {
-				# 	'name':name,
-				# 	'value':attribute['option_value_name'],
-				# 	'position':position,
-				# 	'is_visible':'1',
-				# 	'is_variation':'0',
-				# 	'is_taxonomy':'0'
-				# }
-				# position +=1
-				# self.insert_map(self.TYPE_ATTR_OPTION,attribute['option_value_id'])
 
 			where = {
 				'post_id': product_id,
