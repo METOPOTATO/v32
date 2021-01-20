@@ -3118,13 +3118,110 @@ class LeCartWoocommerce(LeCartWordpress):
 		return product['ID']
 
 	def check_product_import(self, convert, product, products_ext):
-		print('convert_id:' + str(convert['id']))
+		self.log(convert,'convert')
 		product_id = self.get_map_field_by_src(self.TYPE_PRODUCT, convert['id'], None, self._notice['target']['language_default'])
 		if product_id == False :
 			return False
-		print(product_id)
+		if convert['attributes']:
+			position = 0
+			list_term_taxonomy = list()
+			attr_prod_list = dict()
+			for attribute in convert['attributes']:
+				is_attribute_exist = True if self.select_map(self._migration_id, self.TYPE_ATTR, attribute['option_id'], None) else False
+				if is_attribute_exist == False:
+					woocommerce_attribute_taxonomies = {
+						'attribute_name':attribute['option_name'],
+						'attribute_label':attribute['option_name'],
+						'attribute_type':attribute['option_type'],
+						'attribute_orderby':'menu_order',
+						'attribute_public':1
+					}
+					query = self.create_insert_query_connector('woocommerce_attribute_taxonomies', woocommerce_attribute_taxonomies)
+					attr_id = self.import_data_connector(query, 'attribute')
+					self.insert_map(self.TYPE_ATTR, attribute['option_id'],attr_id,value = attribute['option_code'],
+									lang=self._notice['target']['language_default'])
 
-		return self.get_map_field_by_src(self.TYPE_PRODUCT, convert['id'], convert['code'], lang = self._notice['target']['language_default'])
+				is_attribute_value_exist = True if self.select_map(self._migration_id,self.TYPE_ATTR_VALUE,value = attribute['option_value_name']) else False
+
+				if is_attribute_value_exist == False:
+					term = {
+						'name':self.sanitize_title(attribute['option_value_name']),
+						'slug':self.sanitize_title(attribute['option_value_name']),
+						'term_group':0
+					}
+					query = self.create_insert_query_connector('terms', term)
+					term_id = self.import_data_connector(query, 'query')
+					self.insert_map(self.TYPE_ATTR_VALUE, attribute['option_value_id'], term_id,
+									value=attribute['option_value_name'])
+
+					term_taxonomy_data = {
+						'term_id':term_id,
+						'taxonomy':'pa_'+self.sanitize_title(attribute['option_name']),
+						'description':'attr description',
+						'parent':'0',
+						'count':'0'
+					}
+					query = self.create_insert_query_connector('term_taxonomy', term_taxonomy_data)
+					term_taxonomy_id = self.import_data_connector(query, 'query')
+					list_term_taxonomy.append(term_taxonomy_id)
+					term_meta = {
+						'term_id':term_id,
+						'meta_key':'order_pa_' +self.sanitize_title(attribute['option_name']),
+						'meta_value':'0'
+					}
+					query = self.create_insert_query_connector('termmeta', term_meta)
+					self.import_data_connector(query, 'query')
+			for attribute in convert['attributes']:
+				desc_id = self.get_map_field_by_src(self.TYPE_ATTR_VALUE,attribute['option_value_id'])
+				term_relationship = {
+					'object_id':product_id,
+					'term_taxonomy_id':desc_id,
+					'term_order':'0'
+				}
+				query = self.create_insert_query_connector('term_relationships', term_relationship)
+				self.import_data_connector(query, 'query')
+
+				name = 'pa_'+self.sanitize_title(attribute['option_name'])
+				attr_prod_list[name] = {
+					'name':name,
+					'value':attribute['option_value_name'],
+					'position':position,
+					'is_visible':'1',
+					'is_variation':'0',
+					'is_taxonomy':'0'
+				}
+				position +=1
+
+			# for term_taxonomy_id in list_term_taxonomy:
+				# term_relationship = {
+				# 	'object_id':product_id,
+				# 	'term_taxonomy_id':term_taxonomy_id,
+				# 	'term_order':'0'
+				# }
+				# query = self.create_insert_query_connector('term_relationships', term_relationship)
+				# self.import_data_connector(query, 'query')
+
+				# name = 'pa_'+self.sanitize_title(attribute['option_name'])
+				# attr_prod_list[name] = {
+				# 	'name':name,
+				# 	'value':attribute['option_value_name'],
+				# 	'position':position,
+				# 	'is_visible':'1',
+				# 	'is_variation':'0',
+				# 	'is_taxonomy':'0'
+				# }
+				# position +=1
+				# self.insert_map(self.TYPE_ATTR_OPTION,attribute['option_value_id'])
+
+			where = {
+				'post_id': product_id,
+				'meta_key': '_product_attributes',
+				'meta_value': php_serialize(attr_prod_list),
+			}
+			query = self.create_insert_query_connector('postmeta', where)
+
+			self.import_data_connector(query,'products')
+		return self.get_map_field_by_src(self.TYPE_PRODUCT, convert['id'], lang = self._notice['target']['language_default'])
 
 	def update_latest_data_product(self, product_id, convert, product, products_ext):
 		all_query = list()
@@ -3446,7 +3543,6 @@ class LeCartWoocommerce(LeCartWordpress):
 		return response_success()
 #2
 	def product_import(self, convert, product, products_ext):
-		print(1)
 		# self.log(convert,'convert_product')
 		product_posts = {
 			'post_author':1,

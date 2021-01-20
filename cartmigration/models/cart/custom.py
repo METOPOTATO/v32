@@ -554,13 +554,31 @@ class LeCartCustom(LeBasecart):
 				product_category_data['id'] = product_category['categories_id']
 				product_data['categories'].append(product_category_data)
 
-		product_attr = get_row_from_list_by_field(products_ext_data['product_attr'],'product_id',product['products_id'])
-		if product_attr:
-			product_data['attributes'] = product_attr
+		product_attrs = get_list_from_list_by_field(products_ext_data['product_attr'],'product_id',product['products_id'])
+		if product_attrs:
+			p_attr = list()
+			for product_attr in product_attrs:
+				product_attribute = self.construct_product_attribute()
+				attr_id = product_attr['attribute_id']
+				query = {
+						'type': "select",
+						'query': "SELECT * FROM  _DBPRF_attribute WHERE attribute_id = " + attr_id,
+				}
+				attr = self.select_data_connector(query)
+				attr_data = attr['data'][0]
+				product_attribute['option_id'] = attr_data['attribute_id']
+				product_attribute['option_type'] = attr_data['attribute_type']
+				product_attribute['option_name'] = attr_data['attribute_name']
+				product_attribute['option_code'] =	attr_data['attribute_code']
+				product_attribute['option_value_id'] = product_attr['value_id']
+				product_attribute['option_value_name'] = product_attr['value']
+				p_attr.append(product_attribute)
+			product_data['attributes'] = p_attr
 
 		if self._notice['config']['seo_301']:
 			detect_seo = self.detect_seo()
 			product_data['seo'] = getattr(self, 'products_' + detect_seo)(product, products_ext)
+		self.log(product_data,'product_data')
 		return response_success(product_data)
 
 	def get_product_id_import(self, convert, product, products_ext):
