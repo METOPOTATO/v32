@@ -3118,7 +3118,7 @@ class LeCartWoocommerce(LeCartWordpress):
 		return product['ID']
 
 	def check_product_import(self, convert, product, products_ext):
-		self.log(convert,'convert')
+		# self.log(convert,'convert')
 		product_id = self.get_map_field_by_src(self.TYPE_PRODUCT, convert['id'], None, self._notice['target']['language_default'])
 		if product_id == False :
 			return False
@@ -3523,7 +3523,7 @@ class LeCartWoocommerce(LeCartWordpress):
 		return response_success()
 #2
 	def product_import(self, convert, product, products_ext):
-		# self.log(convert,'convert_product')
+		self.log(convert,'convert_product')
 		product_posts = {
 			'post_author':1,
 			'post_date':convert['created_at'],
@@ -3582,17 +3582,29 @@ class LeCartWoocommerce(LeCartWordpress):
 			}
 			meta_query = self.create_insert_query_connector('postmeta', postmeta)
 			self.import_data_connector(meta_query, 'query')
-		category_target = self.select_category_map(convert['categories'][0]['id'])
-		category_target_id = category_target[0]['id_desc'] if category_target else ''
 
-		term_relationship = {
-			'object_id':product_id,
-			'term_taxonomy_id':category_target_id,
-			'term_order':'0'
-		}
-		query = self.create_insert_query_connector('term_relationships',term_relationship)
-		self.import_data_connector(query,'term_relationships')
+		for category in convert['categories']:
+			# category_target = self.select_category_map(category['id'])
+			category_target_id = self.get_map_field_by_src(self.TYPE_CATEGORY,category['id'])
+			term_relationship = {
+				'object_id':product_id,
+				'term_taxonomy_id':category_target_id,
+				'term_order':'0'
+			}
+			query = self.create_insert_query_connector('term_relationships',term_relationship)
+			self.import_data_connector(query,'term_relationships')
+# 		category_target = self.select_category_map(convert['categories'][0]['id'])
 #
+# 		category_target_id = category_target[0]['id_desc'] if category_target else ''
+#
+# 		term_relationship = {
+# 			'object_id':product_id,
+# 			'term_taxonomy_id':category_target_id,
+# 			'term_order':'0'
+# 		}
+# 		query = self.create_insert_query_connector('term_relationships',term_relationship)
+# 		self.import_data_connector(query,'term_relationships')
+# #
 		product_meta_lookup = {
 			'product_id':product_id,#convert['id'],
 			'sku':convert['code'],
